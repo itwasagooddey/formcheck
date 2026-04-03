@@ -1,24 +1,52 @@
 package com.example.formcheck;
 
-import android.os.Bundle;
+import androidx.camera.lifecycle.ProcessCameraProvider;
+import androidx.camera.core.Preview;
+import androidx.camera.view.PreviewView;
+import androidx.core.content.ContextCompat;
 
-import androidx.activity.EdgeToEdge;
+import android.os.Bundle;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.graphics.Insets;
-import androidx.core.view.ViewCompat;
-import androidx.core.view.WindowInsetsCompat;
+
+import com.google.common.util.concurrent.ListenableFuture;
+
+import java.util.concurrent.ExecutionException;
 
 public class MainActivity extends AppCompatActivity {
+
+    private PreviewView previewView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        EdgeToEdge.enable(this);
         setContentView(R.layout.activity_main);
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
-            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
-            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
-            return insets;
-        });
+
+        previewView = findViewById(R.id.previewView);
+
+        startCamera();
+    }
+
+    private void startCamera() {
+        ListenableFuture<ProcessCameraProvider> cameraProviderFuture =
+                ProcessCameraProvider.getInstance(this);
+
+        cameraProviderFuture.addListener(() -> {
+            try {
+                ProcessCameraProvider cameraProvider = cameraProviderFuture.get();
+
+                Preview preview = new Preview.Builder().build();
+                preview.setSurfaceProvider(previewView.getSurfaceProvider());
+
+                cameraProvider.unbindAll();
+                cameraProvider.bindToLifecycle(
+                        this,
+                        androidx.camera.core.CameraSelector.DEFAULT_BACK_CAMERA,
+                        preview
+                );
+
+            } catch (ExecutionException | InterruptedException e) {
+                e.printStackTrace();
+            }
+        }, ContextCompat.getMainExecutor(this));
     }
 }
