@@ -6,6 +6,9 @@ import android.os.Bundle;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.camera.core.CameraSelector;
+import androidx.camera.core.ImageAnalysis;
+import androidx.camera.core.ImageProxy;
 import androidx.camera.core.Preview;
 import androidx.camera.lifecycle.ProcessCameraProvider;
 import androidx.camera.view.PreviewView;
@@ -13,9 +16,15 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
 import com.google.common.util.concurrent.ListenableFuture;
+import com.google.mlkit.vision.common.InputImage;
+import com.google.mlkit.vision.pose.Pose;
+import com.google.mlkit.vision.pose.PoseDetection;
+import com.google.mlkit.vision.pose.PoseDetector;
+import com.google.mlkit.vision.pose.defaults.PoseDetectorOptions;
 
 import java.util.concurrent.ExecutionException;
 
+@androidx.camera.core.ExperimentalGetImage
 public class MainActivity extends AppCompatActivity {
 
     private static final int CAMERA_PERMISSION_CODE = 100;
@@ -52,17 +61,72 @@ public class MainActivity extends AppCompatActivity {
                 Preview preview = new Preview.Builder().build();
                 preview.setSurfaceProvider(previewView.getSurfaceProvider());
 
+                ImageAnalysis imageAnalysis =
+                        new ImageAnalysis.Builder()
+                                .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                                .build();
+
+                PoseDetectorOptions options =
+                        new PoseDetectorOptions.Builder()
+                                .setDetectorMode(PoseDetectorOptions.STREAM_MODE)
+                                .build();
+
+                PoseDetector poseDetector = PoseDetection.getClient(options);
+
+                imageAnalysis.setAnalyzer(ContextCompat.getMainExecutor(this), imageProxy -> {
+                    processImageProxy(poseDetector, imageProxy);
+                });
+
                 cameraProvider.unbindAll();
                 cameraProvider.bindToLifecycle(
                         this,
-                        androidx.camera.core.CameraSelector.DEFAULT_BACK_CAMERA,
-                        preview
+                        CameraSelector.DEFAULT_BACK_CAMERA,
+                        preview,
+                        imageAnalysis
                 );
 
             } catch (ExecutionException | InterruptedException e) {
                 e.printStackTrace();
             }
         }, ContextCompat.getMainExecutor(this));
+    }
+
+    @androidx.camera.core.ExperimentalGetImage
+    private void processImageProxy(PoseDetector poseDetector, ImageProxy imageProxy) {
+        if (imageProxy.getImage() != null) {
+
+            InputImage image =
+                    InputImage.fromMediaImage(
+                            imageProxy.getImage(),
+                            imageProxy.getImageInfo().getRotationDegrees()
+                    );
+
+            poseDetector.process(image)
+                    .addOnSuccessListener(pose -> {
+
+                        if (pose.getAllPoseLandmarks().isEmpty()) {
+                            System.out.println("No pose detected");
+                        } else {
+                            System.out.println("Pose FOUND");
+
+                            if (pose.getPoseLandmark(
+                                    com.google.mlkit.vision.pose.PoseLandmark.LEFT_KNEE) != null) {
+
+                                float x = pose.getPoseLandmark(
+                                                com.google.mlkit.vision.pose.PoseLandmark.LEFT_KNEE)
+                                        .getPosition().x;
+
+                                float y = pose.getPoseLandmark(
+                                                com.google.mlkit.vision.pose.PoseLandmark.LEFT_KNEE)
+                                        .getPosition().y;
+
+                                System.out.println("Left knee: x=" + x + " y=" + y);
+                            }
+                        }
+                    })
+                    .addOnFailureListener(Throwable::printStackTrace)
+                    .addOnCompleteListener(task -> imageProxy.close());
+        }
     }
 
     @Override
