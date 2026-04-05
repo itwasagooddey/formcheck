@@ -30,6 +30,7 @@ public class MainActivity extends AppCompatActivity {
     private static final int CAMERA_PERMISSION_CODE = 100;
 
     private PreviewView previewView;
+    private OverlayView overlayView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -37,6 +38,7 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         previewView = findViewById(R.id.previewView);
+        overlayView = findViewById(R.id.overlayView);
 
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
                 == PackageManager.PERMISSION_GRANTED) {
@@ -91,7 +93,6 @@ public class MainActivity extends AppCompatActivity {
         }, ContextCompat.getMainExecutor(this));
     }
 
-    @androidx.camera.core.ExperimentalGetImage
     private void processImageProxy(PoseDetector poseDetector, ImageProxy imageProxy) {
         if (imageProxy.getImage() != null) {
 
@@ -104,25 +105,14 @@ public class MainActivity extends AppCompatActivity {
             poseDetector.process(image)
                     .addOnSuccessListener(pose -> {
 
-                        if (pose.getAllPoseLandmarks().isEmpty()) {
-                            System.out.println("No pose detected");
-                        } else {
-                            System.out.println("Pose FOUND");
+                        runOnUiThread(() -> {
+                            overlayView.setPose(
+                                    pose,
+                                    imageProxy.getWidth(),
+                                    imageProxy.getHeight()
+                            );
+                        });
 
-                            if (pose.getPoseLandmark(
-                                    com.google.mlkit.vision.pose.PoseLandmark.LEFT_KNEE) != null) {
-
-                                float x = pose.getPoseLandmark(
-                                                com.google.mlkit.vision.pose.PoseLandmark.LEFT_KNEE)
-                                        .getPosition().x;
-
-                                float y = pose.getPoseLandmark(
-                                                com.google.mlkit.vision.pose.PoseLandmark.LEFT_KNEE)
-                                        .getPosition().y;
-
-                                System.out.println("Left knee: x=" + x + " y=" + y);
-                            }
-                        }
                     })
                     .addOnFailureListener(Throwable::printStackTrace)
                     .addOnCompleteListener(task -> imageProxy.close());
