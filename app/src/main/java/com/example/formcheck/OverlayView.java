@@ -10,6 +10,9 @@ import android.view.View;
 import com.google.mlkit.vision.pose.Pose;
 import com.google.mlkit.vision.pose.PoseLandmark;
 
+import java.util.HashMap;
+import java.util.Map;
+
 public class OverlayView extends View {
 
     private Pose pose;
@@ -18,12 +21,16 @@ public class OverlayView extends View {
     private int imageWidth;
     private int imageHeight;
 
+    private Map<Integer, float[]> smoothedPoints = new HashMap<>();
+
+    private final float ALPHA = 0.7f;
+
     public OverlayView(Context context, AttributeSet attrs) {
         super(context, attrs);
 
         paint = new Paint();
         paint.setColor(Color.RED);
-        paint.setStrokeWidth(10f);
+        paint.setStrokeWidth(8f);
     }
 
     public void setPose(Pose pose, int width, int height) {
@@ -39,41 +46,61 @@ public class OverlayView extends View {
 
         if (pose == null) return;
 
-        drawLeg(canvas,
-                pose.getPoseLandmark(PoseLandmark.LEFT_HIP),
-                pose.getPoseLandmark(PoseLandmark.LEFT_KNEE),
-                pose.getPoseLandmark(PoseLandmark.LEFT_ANKLE));
+        drawLine(canvas, PoseLandmark.LEFT_SHOULDER, PoseLandmark.LEFT_ELBOW);
+        drawLine(canvas, PoseLandmark.LEFT_ELBOW, PoseLandmark.LEFT_WRIST);
 
-        drawLeg(canvas,
-                pose.getPoseLandmark(PoseLandmark.RIGHT_HIP),
-                pose.getPoseLandmark(PoseLandmark.RIGHT_KNEE),
-                pose.getPoseLandmark(PoseLandmark.RIGHT_ANKLE));
+        drawLine(canvas, PoseLandmark.LEFT_HIP, PoseLandmark.LEFT_KNEE);
+        drawLine(canvas, PoseLandmark.LEFT_KNEE, PoseLandmark.LEFT_ANKLE);
+
+        drawLine(canvas, PoseLandmark.RIGHT_SHOULDER, PoseLandmark.RIGHT_ELBOW);
+        drawLine(canvas, PoseLandmark.RIGHT_ELBOW, PoseLandmark.RIGHT_WRIST);
+
+        drawLine(canvas, PoseLandmark.RIGHT_HIP, PoseLandmark.RIGHT_KNEE);
+        drawLine(canvas, PoseLandmark.RIGHT_KNEE, PoseLandmark.RIGHT_ANKLE);
+
+        drawLine(canvas, PoseLandmark.LEFT_SHOULDER, PoseLandmark.RIGHT_SHOULDER);
+        drawLine(canvas, PoseLandmark.LEFT_HIP, PoseLandmark.RIGHT_HIP);
+
+        drawLine(canvas, PoseLandmark.LEFT_SHOULDER, PoseLandmark.LEFT_HIP);
+        drawLine(canvas, PoseLandmark.RIGHT_SHOULDER, PoseLandmark.RIGHT_HIP);
     }
 
-    private void drawLeg(Canvas canvas,
-                         PoseLandmark hip,
-                         PoseLandmark knee,
-                         PoseLandmark ankle) {
+    private void drawLine(Canvas canvas, int startType, int endType) {
 
-        if (hip == null || knee == null || ankle == null) return;
+        PoseLandmark start = pose.getPoseLandmark(startType);
+        PoseLandmark end = pose.getPoseLandmark(endType);
+
+        if (start == null || end == null) return;
+
+        float[] startPoint = getSmoothedPoint(startType, start);
+        float[] endPoint = getSmoothedPoint(endType, end);
+
+        canvas.drawLine(startPoint[0], startPoint[1], endPoint[0], endPoint[1], paint);
+
+        canvas.drawCircle(startPoint[0], startPoint[1], 10, paint);
+        canvas.drawCircle(endPoint[0], endPoint[1], 10, paint);
+    }
+
+    private float[] getSmoothedPoint(int type, PoseLandmark landmark) {
 
         float scaleX = (float) getWidth() / imageHeight;
         float scaleY = (float) getHeight() / imageWidth;
 
-        float hx = hip.getPosition().x * scaleX;
-        float hy = hip.getPosition().y * scaleY;
+        float rawX = landmark.getPosition().x * scaleX;
+        float rawY = landmark.getPosition().y * scaleY;
 
-        float kx = knee.getPosition().x * scaleX;
-        float ky = knee.getPosition().y * scaleY;
+        if (!smoothedPoints.containsKey(type)) {
+            smoothedPoints.put(type, new float[]{rawX, rawY});
+            return new float[]{rawX, rawY};
+        }
 
-        float ax = ankle.getPosition().x * scaleX;
-        float ay = ankle.getPosition().y * scaleY;
+        float[] last = smoothedPoints.get(type);
 
-        canvas.drawCircle(hx, hy, 20, paint);
-        canvas.drawCircle(kx, ky, 20, paint);
-        canvas.drawCircle(ax, ay, 20, paint);
+        float smoothX = ALPHA * last[0] + (1 - ALPHA) * rawX;
+        float smoothY = ALPHA * last[1] + (1 - ALPHA) * rawY;
 
-        canvas.drawLine(hx, hy, kx, ky, paint);
-        canvas.drawLine(kx, ky, ax, ay, paint);
+        smoothedPoints.put(type, new float[]{smoothX, smoothY});
+
+        return new float[]{smoothX, smoothY};
     }
 }
