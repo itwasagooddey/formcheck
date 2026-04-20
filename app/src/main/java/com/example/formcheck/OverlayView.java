@@ -22,8 +22,9 @@ public class OverlayView extends View {
     private int imageHeight;
 
     private Map<Integer, float[]> smoothedPoints = new HashMap<>();
-
     private final float ALPHA = 0.7f;
+
+    private String status = "WAITING...";
 
     public OverlayView(Context context, AttributeSet attrs) {
         super(context, attrs);
@@ -31,6 +32,7 @@ public class OverlayView extends View {
         paint = new Paint();
         paint.setColor(Color.RED);
         paint.setStrokeWidth(8f);
+        paint.setStyle(Paint.Style.STROKE);
     }
 
     public void setPose(Pose pose, int width, int height) {
@@ -63,6 +65,13 @@ public class OverlayView extends View {
 
         drawLine(canvas, PoseLandmark.LEFT_SHOULDER, PoseLandmark.LEFT_HIP);
         drawLine(canvas, PoseLandmark.RIGHT_SHOULDER, PoseLandmark.RIGHT_HIP);
+
+        calculateAngle();
+
+        paint.setColor(Color.GREEN);
+        paint.setTextSize(70f);
+        canvas.drawText(status, 50, 150, paint);
+        paint.setColor(Color.RED);
     }
 
     private void drawLine(Canvas canvas, int startType, int endType) {
@@ -76,7 +85,6 @@ public class OverlayView extends View {
         float[] endPoint = getSmoothedPoint(endType, end);
 
         canvas.drawLine(startPoint[0], startPoint[1], endPoint[0], endPoint[1], paint);
-
         canvas.drawCircle(startPoint[0], startPoint[1], 10, paint);
         canvas.drawCircle(endPoint[0], endPoint[1], 10, paint);
     }
@@ -102,5 +110,40 @@ public class OverlayView extends View {
         smoothedPoints.put(type, new float[]{smoothX, smoothY});
 
         return new float[]{smoothX, smoothY};
+    }
+
+    private void calculateAngle() {
+
+        PoseLandmark hip = pose.getPoseLandmark(PoseLandmark.LEFT_HIP);
+        PoseLandmark knee = pose.getPoseLandmark(PoseLandmark.LEFT_KNEE);
+        PoseLandmark ankle = pose.getPoseLandmark(PoseLandmark.LEFT_ANKLE);
+
+        if (hip == null || knee == null || ankle == null) return;
+
+        double angle = getAngle(hip, knee, ankle);
+
+        if (angle < 90) {
+            status = "GOOD";
+        } else if (angle < 120) {
+            status = "LOW";
+        } else {
+            status = "BAD";
+        }
+    }
+
+    private double getAngle(PoseLandmark a, PoseLandmark b, PoseLandmark c) {
+
+        double abx = a.getPosition().x - b.getPosition().x;
+        double aby = a.getPosition().y - b.getPosition().y;
+
+        double cbx = c.getPosition().x - b.getPosition().x;
+        double cby = c.getPosition().y - b.getPosition().y;
+
+        double dot = abx * cbx + aby * cby;
+
+        double mag1 = Math.sqrt(abx * abx + aby * aby);
+        double mag2 = Math.sqrt(cbx * cbx + cby * cby);
+
+        return Math.toDegrees(Math.acos(dot / (mag1 * mag2)));
     }
 }
