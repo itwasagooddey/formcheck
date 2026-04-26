@@ -15,24 +15,35 @@ import java.util.Map;
 
 public class OverlayView extends View {
 
+    private static final float STROKE_WIDTH = 8f;
+    private static final float CIRCLE_RADIUS = 10f;
+    private static final float TEXT_SIZE = 60f;
+    private static final float ALPHA = 0.7f;
+
+    private static final int GOOD_ANGLE = 90;
+    private static final int LOW_ANGLE = 120;
+
     private Pose pose;
     private Paint paint;
 
     private int imageWidth;
     private int imageHeight;
 
-    private Map<Integer, float[]> smoothedPoints = new HashMap<>();
-    private final float ALPHA = 0.7f;
+    private final Map<Integer, float[]> smoothed = new HashMap<>();
 
-    private String status = "WAITING...";
+    private String exercise = Exercise.SQUATS;
 
     public OverlayView(Context context, AttributeSet attrs) {
         super(context, attrs);
 
         paint = new Paint();
         paint.setColor(Color.RED);
-        paint.setStrokeWidth(8f);
+        paint.setStrokeWidth(STROKE_WIDTH);
         paint.setStyle(Paint.Style.STROKE);
+    }
+
+    public void setExercise(String exercise) {
+        this.exercise = exercise;
     }
 
     public void setPose(Pose pose, int width, int height) {
@@ -48,87 +59,105 @@ public class OverlayView extends View {
 
         if (pose == null) return;
 
-        drawLine(canvas, PoseLandmark.LEFT_SHOULDER, PoseLandmark.LEFT_ELBOW);
-        drawLine(canvas, PoseLandmark.LEFT_ELBOW, PoseLandmark.LEFT_WRIST);
+        drawBody(canvas);
+        calculateAngle(canvas);
+    }
 
-        drawLine(canvas, PoseLandmark.LEFT_HIP, PoseLandmark.LEFT_KNEE);
-        drawLine(canvas, PoseLandmark.LEFT_KNEE, PoseLandmark.LEFT_ANKLE);
+    private float scaleX(float x) {
+        return x * getWidth() / (float) imageHeight;
+    }
 
-        drawLine(canvas, PoseLandmark.RIGHT_SHOULDER, PoseLandmark.RIGHT_ELBOW);
-        drawLine(canvas, PoseLandmark.RIGHT_ELBOW, PoseLandmark.RIGHT_WRIST);
+    private float scaleY(float y) {
+        return y * getHeight() / (float) imageWidth;
+    }
 
-        drawLine(canvas, PoseLandmark.RIGHT_HIP, PoseLandmark.RIGHT_KNEE);
-        drawLine(canvas, PoseLandmark.RIGHT_KNEE, PoseLandmark.RIGHT_ANKLE);
+    private float[] smooth(int id, float x, float y) {
 
-        drawLine(canvas, PoseLandmark.LEFT_SHOULDER, PoseLandmark.RIGHT_SHOULDER);
-        drawLine(canvas, PoseLandmark.LEFT_HIP, PoseLandmark.RIGHT_HIP);
+        if (!smoothed.containsKey(id)) {
+            smoothed.put(id, new float[]{x, y});
+            return new float[]{x, y};
+        }
 
-        drawLine(canvas, PoseLandmark.LEFT_SHOULDER, PoseLandmark.LEFT_HIP);
-        drawLine(canvas, PoseLandmark.RIGHT_SHOULDER, PoseLandmark.RIGHT_HIP);
+        float[] last = smoothed.get(id);
 
-        calculateAngle();
+        float sx = ALPHA * last[0] + (1 - ALPHA) * x;
+        float sy = ALPHA * last[1] + (1 - ALPHA) * y;
+
+        smoothed.put(id, new float[]{sx, sy});
+        return new float[]{sx, sy};
+    }
+
+    private void draw(int a, int b, Canvas canvas) {
+
+        PoseLandmark p1 = pose.getPoseLandmark(a);
+        PoseLandmark p2 = pose.getPoseLandmark(b);
+
+        if (p1 == null || p2 == null) return;
+
+        float x1 = scaleX(p1.getPosition().x);
+        float y1 = scaleY(p1.getPosition().y);
+
+        float x2 = scaleX(p2.getPosition().x);
+        float y2 = scaleY(p2.getPosition().y);
+
+        float[] s1 = smooth(a, x1, y1);
+        float[] s2 = smooth(b, x2, y2);
+
+        canvas.drawLine(s1[0], s1[1], s2[0], s2[1], paint);
+        canvas.drawCircle(s1[0], s1[1], CIRCLE_RADIUS, paint);
+        canvas.drawCircle(s2[0], s2[1], CIRCLE_RADIUS, paint);
+    }
+
+    private void drawBody(Canvas canvas) {
+
+        draw(PoseLandmark.LEFT_SHOULDER, PoseLandmark.RIGHT_SHOULDER, canvas);
+        draw(PoseLandmark.LEFT_HIP, PoseLandmark.RIGHT_HIP, canvas);
+
+        draw(PoseLandmark.LEFT_SHOULDER, PoseLandmark.LEFT_HIP, canvas);
+        draw(PoseLandmark.RIGHT_SHOULDER, PoseLandmark.RIGHT_HIP, canvas);
+
+        draw(PoseLandmark.LEFT_SHOULDER, PoseLandmark.LEFT_ELBOW, canvas);
+        draw(PoseLandmark.LEFT_ELBOW, PoseLandmark.LEFT_WRIST, canvas);
+
+        draw(PoseLandmark.RIGHT_SHOULDER, PoseLandmark.RIGHT_ELBOW, canvas);
+        draw(PoseLandmark.RIGHT_ELBOW, PoseLandmark.RIGHT_WRIST, canvas);
+
+        draw(PoseLandmark.LEFT_HIP, PoseLandmark.LEFT_KNEE, canvas);
+        draw(PoseLandmark.LEFT_KNEE, PoseLandmark.LEFT_ANKLE, canvas);
+
+        draw(PoseLandmark.RIGHT_HIP, PoseLandmark.RIGHT_KNEE, canvas);
+        draw(PoseLandmark.RIGHT_KNEE, PoseLandmark.RIGHT_ANKLE, canvas);
+    }
+
+    private void calculateAngle(Canvas canvas) {
+
+        PoseLandmark a = null;
+        PoseLandmark b = null;
+        PoseLandmark c = null;
+
+        if (exercise.equals(Exercise.SQUATS)) {
+            a = pose.getPoseLandmark(PoseLandmark.LEFT_HIP);
+            b = pose.getPoseLandmark(PoseLandmark.LEFT_KNEE);
+            c = pose.getPoseLandmark(PoseLandmark.LEFT_ANKLE);
+        } else {
+            a = pose.getPoseLandmark(PoseLandmark.LEFT_SHOULDER);
+            b = pose.getPoseLandmark(PoseLandmark.LEFT_ELBOW);
+            c = pose.getPoseLandmark(PoseLandmark.LEFT_WRIST);
+        }
+
+        if (a == null || b == null || c == null) return;
+
+        double angle = getAngle(a, b, c);
+
+        String status;
+        if (angle < GOOD_ANGLE) status = "GOOD";
+        else if (angle < LOW_ANGLE) status = "LOW";
+        else status = "BAD";
 
         paint.setColor(Color.GREEN);
-        paint.setTextSize(70f);
-        canvas.drawText(status, 50, 150, paint);
+        paint.setTextSize(TEXT_SIZE);
+        canvas.drawText(exercise + " " + (int) angle, 50, 100, paint);
         paint.setColor(Color.RED);
-    }
-
-    private void drawLine(Canvas canvas, int startType, int endType) {
-
-        PoseLandmark start = pose.getPoseLandmark(startType);
-        PoseLandmark end = pose.getPoseLandmark(endType);
-
-        if (start == null || end == null) return;
-
-        float[] startPoint = getSmoothedPoint(startType, start);
-        float[] endPoint = getSmoothedPoint(endType, end);
-
-        canvas.drawLine(startPoint[0], startPoint[1], endPoint[0], endPoint[1], paint);
-        canvas.drawCircle(startPoint[0], startPoint[1], 10, paint);
-        canvas.drawCircle(endPoint[0], endPoint[1], 10, paint);
-    }
-
-    private float[] getSmoothedPoint(int type, PoseLandmark landmark) {
-
-        float scaleX = (float) getWidth() / imageHeight;
-        float scaleY = (float) getHeight() / imageWidth;
-
-        float rawX = landmark.getPosition().x * scaleX;
-        float rawY = landmark.getPosition().y * scaleY;
-
-        if (!smoothedPoints.containsKey(type)) {
-            smoothedPoints.put(type, new float[]{rawX, rawY});
-            return new float[]{rawX, rawY};
-        }
-
-        float[] last = smoothedPoints.get(type);
-
-        float smoothX = ALPHA * last[0] + (1 - ALPHA) * rawX;
-        float smoothY = ALPHA * last[1] + (1 - ALPHA) * rawY;
-
-        smoothedPoints.put(type, new float[]{smoothX, smoothY});
-
-        return new float[]{smoothX, smoothY};
-    }
-
-    private void calculateAngle() {
-
-        PoseLandmark hip = pose.getPoseLandmark(PoseLandmark.LEFT_HIP);
-        PoseLandmark knee = pose.getPoseLandmark(PoseLandmark.LEFT_KNEE);
-        PoseLandmark ankle = pose.getPoseLandmark(PoseLandmark.LEFT_ANKLE);
-
-        if (hip == null || knee == null || ankle == null) return;
-
-        double angle = getAngle(hip, knee, ankle);
-
-        if (angle < 90) {
-            status = "GOOD";
-        } else if (angle < 120) {
-            status = "LOW";
-        } else {
-            status = "BAD";
-        }
     }
 
     private double getAngle(PoseLandmark a, PoseLandmark b, PoseLandmark c) {
@@ -144,6 +173,9 @@ public class OverlayView extends View {
         double mag1 = Math.sqrt(abx * abx + aby * aby);
         double mag2 = Math.sqrt(cbx * cbx + cby * cby);
 
-        return Math.toDegrees(Math.acos(dot / (mag1 * mag2)));
+        double cos = dot / (mag1 * mag2);
+        cos = Math.max(-1.0, Math.min(1.0, cos));
+
+        return Math.toDegrees(Math.acos(cos));
     }
 }
