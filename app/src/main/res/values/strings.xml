@@ -1,0 +1,14 @@
+<resources>
+    <string name="app_name">FormCheck</string>
+    <string name="exercise">Exercise</string>
+    <string name="angle">Угол: 0°</string>
+    <string name="status">ГОТОВО</string>
+    <string name="record">REC</string>
+    <string name="results">РЕЗУЛЬТАТЫ</string>
+    <string name="reps">Повторений: </string>
+    <string name="min_angle">Мин. угол: </string>
+    <string name="avg_angle">Средн. угол: </string>
+    <string name="advice">Рекомендации</string>
+    <string name="choose_exercise">Выберите упражнение</string>
+    <string name="disclaimer">⚠️ Не заменяет тренера или врача</string>
+</resources>

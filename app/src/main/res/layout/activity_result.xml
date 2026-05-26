@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/resultRoot"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/bg_primary">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="20dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Результаты"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            android:textColor="@color/text_primary"/>
+
+        <TextView
+            android:id="@+id/tvExerciseName"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="18sp"
+            android:textColor="@color/accent_green"
+            android:layout_marginTop="4dp"/>
+
+        <com.google.android.material.divider.MaterialDivider
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginTop="12dp"
+            android:layout_marginBottom="12dp"/>
+
+        <TextView
+            android:id="@+id/tvQuality"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="22sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="12dp"/>
+
+        <TextView
+            android:id="@+id/tvReps"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="18sp"
+            android:textColor="@color/text_primary"
+            android:layout_marginTop="4dp"/>
+
+        <TextView
+            android:id="@+id/tvMinAngle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="16sp"
+            android:textColor="@color/text_primary"
+            android:layout_marginTop="8dp"/>
+
+        <TextView
+            android:id="@+id/tvAvgAngle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="16sp"
+            android:textColor="@color/text_primary"
+            android:layout_marginTop="8dp"/>
+
+        <com.google.android.material.divider.MaterialDivider
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginTop="16dp"
+            android:layout_marginBottom="8dp"/>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Рекомендации"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:textColor="@color/text_primary"/>
+
+        <TextView
+            android:id="@+id/tvAdvice"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="15sp"
+            android:textColor="@color/text_secondary"
+            android:layout_marginTop="8dp"/>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Рекомендации носят информационный характер и не заменяют тренера."
+            android:textSize="12sp"
+            android:textColor="@color/text_secondary"
+            android:layout_marginTop="16dp"/>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="24dp">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnAgain"
+                android:layout_width="0dp"
+                android:layout_height="52dp"
+                android:layout_weight="1"
+                android:text="Ещё раз"
+                android:textAllCaps="false"
+                android:textColor="@color/text_primary"
+                android:layout_marginEnd="8dp"
+                app:cornerRadius="12dp"
+                android:backgroundTint="@color/accent_green"/>
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnProgress"
+                android:layout_width="0dp"
+                android:layout_height="52dp"
+                android:layout_weight="1"
+                android:text="История"
+                android:textAllCaps="false"
+                android:textColor="@color/text_primary"
+                app:cornerRadius="12dp"
+                android:backgroundTint="@color/bg_card_dark"/>
+
+        </LinearLayout>
+
+    </LinearLayout>
+</ScrollView>
